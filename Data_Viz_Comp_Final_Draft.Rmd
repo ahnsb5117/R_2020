@@ -1,0 +1,112 @@
+---
+title: "Data_Viz_Comp_Final_Draft"
+author: "Sung Bum Ahn, Amrita Sawney"
+date: "1/26/2021"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(gganimate)
+library(ggrepel)
+library(extrafont)
+theme_bw
+```
+
+```{r}
+# Load the data
+salary_potential <-
+  read_csv("https://raw.githubusercontent.com/Reed-Statistics/data-viz-competition-2020/main/data/salary_potential.csv") %>%
+  dplyr::select(-X1)
+
+tuition_cost <-
+  read_csv("https://raw.githubusercontent.com/Reed-Statistics/data-viz-competition-2020/main/data/tuition_cost.csv") %>% 
+  dplyr::select(-X1)
+
+```
+
+```{r}
+#Wrangling
+TC <- tuition_cost %>% 
+  select(name, type, out_of_state_total) %>% 
+  mutate(out_of_state_thousands = (out_of_state_total*.001))
+SP <- salary_potential %>%   
+  select(make_world_better_percent,
+       mid_career_pay, 
+       early_career_pay,
+       name) %>% 
+  mutate(early_pay_thousands = (early_career_pay*.001)) %>%
+  mutate(mid_pay_thousands = (mid_career_pay*.001)) %>% 
+  drop_na(make_world_better_percent)
+
+
+
+TCSP <- inner_join(SP, TC, by = c("name" = "name")) %>% 
+  
+
+  filter(type %in% c("Public", "Private"))
+
+TCSPEarlyMid <- TCSP %>%  pivot_longer(cols = c("early_pay_thousands", "mid_pay_thousands"), names_to = "pay")
+
+reed <- TCSPEarlyMid %>% 
+  filter (name == "Reed College")
+
+Colleges <- TCSPEarlyMid %>%
+  filter ( name %in% c("Reed College", "Lewis & Clark College", "The King's University", "Bellin College", "Harvey Mudd College", "SUNY Maritime College", "Mississippi Valley State University"))
+  
+  
+
+```
+
+```{r}
+#Animated scatterplot
+ggplot(data = TCSPEarlyMid, mapping = aes(x= out_of_state_thousands, 
+                                          y= value, 
+                                          frame = pay, 
+                                          color = type, 
+                                          size = make_world_better_percent, 
+                                          group = name
+                                        )) + 
+  ylim(30, 170) + 
+  xlim(0,110) +
+  scale_color_manual(values = c("sienna3", "steelblue")) + 
+  geom_point(alpha=0.3) +
+  geom_point(data = Colleges, alpha=1) +
+  geom_point(data = reed, colour="red")+
+  scale_shape_identity()+
+  geom_text(mapping = aes(label=name), 
+            size = 3, 
+            data = Colleges, 
+            color="black", 
+            vjust = "bottom", 
+            hjust = "left") +
+  geom_text(mapping = aes(label=name),
+            size = 3, data = reed, 
+            color="black", 
+            vjust = "bottom", 
+            hjust = "left", 
+            face = "bold") +
+  guides(label=FALSE) +
+  transition_states(pay) +
+  ease_aes('linear')+
+    enter_fade()+
+    exit_fade()+
+  labs(x = "Tuition Cost  (Thousands of USD)", 
+       y = "Estimated Early to Mid Career Pay (Thousands of USD)", 
+       title = "Does investment in tuition imply \n both financial success and a gratifying career?", 
+       size = "'Make World Better' Percent", 
+       color="Type of Institution")  +
+  guides(label=FALSE) +
+  theme(legend.position = "bottom")+
+  theme(axis.title=element_text(family="Roboto Condensed", size=14))+
+  theme(title = element_text(family=" Roboto Condensed", face="bold", size = 18)) +
+  theme(legend.title = element_text(family=" Roboto Condensed", size=12))+
+  theme(legend.text.align = 0.5, legend.direction = "horizontal", legend.box.just = "center") +
+  theme(panel.background = element_rect(fill = "white")) +
+  theme(panel.grid.major = element_line(color = "grey", size = 0.25)) +
+  theme(panel.grid.minor = element_line(color = "grey", size = 0.15))+
+  theme(plot.margin = unit(c(1, 1, 1, 1), "cm"))
+
+```
